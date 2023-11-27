@@ -48,17 +48,6 @@ app.post("/login", async (req, res) => {
     res
       .status(201)
       .json({ token: token, user: user, message: "Login Success" });
-    // .then((user) => {
-    //   if (user) {
-    //     if (user.pwd === pwd) {
-    //       res.json("Login Success");
-    //     } else {
-    //       res.json("The password is incorrect");
-    //     }
-    //   } else {
-    //     res.json("No record found");
-    //   }
-    // });
   } catch (error) {
     res.status(500).json({ error: "Failed to login user\n" + error });
   }
@@ -77,13 +66,6 @@ app.post("/register", async (req, res) => {
     });
     await newUser.save();
     res.status(201).json({ newUser, message: "User created successfully" });
-
-    // userModel
-    //   .create(req.body)
-    //   .then((user) => {
-    //     res.json(user);
-    //   })
-    //   .catch((err) => res.json(err));
   } catch (error) {
     res.status(500).json({ error: "Failed to create user\n" + error });
   }
