@@ -15,7 +15,7 @@ app.use(cors());
 
 // Connect to MongoDB and Express
 mongoose
-  .connect("mongodb://127.0.0.1:27017/aup-oos", {
+  .connect("mongodb+srv://aup-oss:aup123@aup-oss.o7zk4nq.mongodb.net/", {
     useNewURLParser: true,
     useUnifiedTopology: true,
   })
@@ -68,5 +68,14 @@ app.post("/register", async (req, res) => {
     res.status(201).json({ newUser, message: "User created successfully" });
   } catch (error) {
     res.status(500).json({ error: "Failed to create user\n" + error });
+  }
+});
+
+app.get("/register", async (req, res) => {
+  try {
+    const user = await userModel.find();
+    res.status(201).json(user);
+  } catch (errror) {
+    res.status(500).json({ error: "Unable to get users" });
   }
 });
