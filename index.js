@@ -5,7 +5,12 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const multer = require("multer");
+const path = require("path");
+
+// Import models
 const userModel = require("./models/UserModel");
+const productModel = require("./models/ProductModel");
 
 // Connect to express app
 const app = express();
@@ -27,6 +32,25 @@ mongoose
   .catch((err) => {
     console.log("Unable to connect to server/MongoDB", err);
   });
+
+// Configure Multer for file upload
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = "uploads/products";
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const timestamp = Date.now();
+    const extension = path.extname(file.originalname);
+    const filename = `${file.fieldname}_${timestamp}${extension}`;
+
+    cb(null, filename);
+  },
+});
+
+const upload = multer({
+  storage: storage,
+});
 
 // Routes
 // User Login
@@ -75,7 +99,68 @@ app.get("/register", async (req, res) => {
   try {
     const user = await userModel.find();
     res.status(201).json(user);
-  } catch (errror) {
+  } catch (error) {
     res.status(500).json({ error: "Unable to get users" });
   }
 });
+
+// Product Page
+// Add Product
+app.post("/products", upload.single("image"), async (req, res) => {
+  console.log(req.body);
+  const { label, price, totalQuantity, category } = req.body;
+  const photo = req.file.filename;
+  try {
+    const newProduct = new productModel({
+      photo: photo,
+      label,
+      price,
+      totalQuantity,
+      category,
+    });
+    await newProduct.save();
+    res
+      .status(201)
+      .json({ newProduct, message: "Product created successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Failed to create product\n" + error });
+  }
+});
+
+// View Product
+app.get("/get-products", async (req, res) => {
+  try {
+    const products = await productModel.find({});
+    res.status(200).json({ message: "success", products });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Failed to get products\n" + error });
+  }
+});
+
+// Update Product
+
+
+// Delete Product
+
+
+// Cart Page
+// Add to Cart
+
+
+// View Cart
+
+
+// Update Cart
+
+
+// Delete Cart
+
+
+// Payment Page
+// View Payment
+
+
+// History Page
+// View History
