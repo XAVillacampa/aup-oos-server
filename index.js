@@ -21,7 +21,7 @@ app.use(cors());
 
 // Connect to MongoDB and Express
 mongoose
-  .connect("mongodb://127.0.0.1:27017/aup-oos", {
+  .connect("mongodb+srv://aup-oss:aup123@aup-oss.o7zk4nq.mongodb.net/", {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
@@ -67,14 +67,29 @@ app.post("/login", async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({ error: "The password is incorrect" });
     }
-    const token = jwt.sign({ _id: user._id }, "secretkey", {
-      expiresIn: "1h",
-    });
+    const token = jwt.sign(
+      { _id: user._id, idNum: user.idNum, email: user.email },
+      "secretkey",
+      {
+        expiresIn: "1h",
+      }
+    );
     res
       .status(201)
       .json({ token: token, user: user, message: "Login Success" });
   } catch (error) {
     res.status(500).json({ error: "Failed to login user\n" + error });
+  }
+});
+
+app.get("/user", async (req, res) => {
+  try {
+    const token = req.header("Authorization").replace("Bearer ", "");
+    const decoded = jwt.verify(token, "secretkey");
+    const user = await userModel.findById(decoded._id);
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(401).json({ error: "Unauthorized" });
   }
 });
 // User Register
@@ -96,12 +111,24 @@ app.post("/register", async (req, res) => {
   }
 });
 
+//GET REGISTERED USERS
+
 app.get("/register", async (req, res) => {
   try {
     const user = await userModel.find();
     res.status(201).json(user);
   } catch (error) {
     res.status(500).json({ error: "Unable to get users" });
+  }
+});
+
+app.delete("/delete-user/:id", async (req, res) => {
+  try {
+    const userId = req.params.id;
+    await userModel.findByIdAndDelete(userId);
+    res.status(200).json({ message: "User deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete user\n" + error });
   }
 });
 
