@@ -11,6 +11,7 @@ const path = require("path");
 // Import models
 const userModel = require("./models/UserModel");
 const productModel = require("./models/ProductModel");
+const cartModel = require("./models/CartModel");
 
 // Connect to express app
 const app = express();
@@ -20,8 +21,8 @@ app.use(cors());
 
 // Connect to MongoDB and Express
 mongoose
-  .connect("mongodb+srv://aup-oss:aup123@aup-oss.o7zk4nq.mongodb.net/", {
-    useNewURLParser: true,
+  .connect("mongodb://127.0.0.1:27017/aup-oos", {
+    useNewUrlParser: true,
     useUnifiedTopology: true,
   })
   .then(() => {
@@ -141,26 +142,47 @@ app.get("/get-products", async (req, res) => {
 
 // Update Product
 
-
 // Delete Product
-
 
 // Cart Page
 // Add to Cart
-
+app.post("/cart", async (req, res) => {
+  const { orderId, productId, quantity } = req.body;
+  try {
+    const newCart = new cartModel({
+      orderId,
+      products: [
+        {
+          productID: productId,
+          quantity: quantity,
+        },
+      ],
+    });
+    await newCart.save();
+    res.status(201).json({ newCart, message: "Cart created successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Failed to create cart\n" + error });
+  }
+});
 
 // View Cart
-
+app.get("/cart", async (req, res) => {
+  try {
+    const cart = await cartModel.find({});
+    res.status(200).json({ message: "success", cart });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Failed to get cart\n" + error });
+  }
+});
 
 // Update Cart
 
-
 // Delete Cart
-
 
 // Payment Page
 // View Payment
-
 
 // History Page
 // View History
