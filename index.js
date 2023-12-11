@@ -21,13 +21,10 @@ app.use(cors());
 
 // Connect to MongoDB and Express
 mongoose
-  .connect(
-    "mongodb+srv://aup-oss:aup123@aup-oss.o7zk4nq.mongodb.net/aup-oss",
-    {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    }
-  )
+  .connect("mongodb+srv://aup-oss:aup123@aup-oss.o7zk4nq.mongodb.net/aup-oss", {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
   .then(() => {
     app.listen(3000, () => {
       console.log("Server is running with MongoDB");
@@ -121,7 +118,7 @@ app.delete("/delete-user/:id", async (req, res) => {
 // Configure Multer for file upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = "public/product-images"; // Assuming 'public' is your static files directory
+    const uploadDir = "public/product-images";
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
