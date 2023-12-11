@@ -21,10 +21,13 @@ app.use(cors());
 
 // Connect to MongoDB and Express
 mongoose
-  .connect("mongodb+srv://aup-oss:aup123@aup-oss.o7zk4nq.mongodb.net/", {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(
+    "mongodb+srv://aup-oss:aup123@aup-oss.o7zk4nq.mongodb.net/aup-oss",
+    {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    }
+  )
   .then(() => {
     app.listen(3000, () => {
       console.log("Server is running with MongoDB");
@@ -33,25 +36,6 @@ mongoose
   .catch((err) => {
     console.log("Unable to connect to server/MongoDB", err);
   });
-
-// Configure Multer for file upload
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = "uploads/products";
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const timestamp = Date.now();
-    const extension = path.extname(file.originalname);
-    const filename = `${file.fieldname}_${timestamp}${extension}`;
-
-    cb(null, filename);
-  },
-});
-
-const upload = multer({
-  storage: storage,
-});
 
 // Routes
 // User Login
@@ -133,11 +117,35 @@ app.delete("/delete-user/:id", async (req, res) => {
 });
 
 // Product Page
+
+// Configure Multer for file upload
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = "public/product-images"; // Assuming 'public' is your static files directory
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const timestamp = Date.now();
+    const extension = path.extname(file.originalname);
+    const filename = `${file.fieldname}_${timestamp}${extension}`;
+    cb(null, filename);
+  },
+});
+
+const upload = multer({
+  storage: storage,
+});
+
+app.use(
+  "/product-images",
+  express.static(path.join(__dirname, "public/product-images"))
+);
+
 // Add Product
-app.post("/products", upload.single("image"), async (req, res) => {
-  console.log(req.body);
+app.post("/add-products", upload.single("image"), async (req, res) => {
   const { label, price, totalQuantity, category } = req.body;
   const photo = req.file.filename;
+
   try {
     const newProduct = new productModel({
       photo: photo,
@@ -146,12 +154,13 @@ app.post("/products", upload.single("image"), async (req, res) => {
       totalQuantity,
       category,
     });
+
     await newProduct.save();
     res
       .status(201)
       .json({ newProduct, message: "Product created successfully" });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({ error: "Failed to create product\n" + error });
   }
 });
