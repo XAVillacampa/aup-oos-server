@@ -6,6 +6,16 @@ const userSchema = new mongoose.Schema({
   idNum: { type: Number, unique: true, required: true },
   email: { type: String, unique: true, required: true },
   pwd: { type: String, required: true },
+  cart: [
+    {
+      product: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+      },
+      quantity: Number,
+    },
+  ],
+  role: { type: String, default: "user" },
 });
 
 userSchema.statics.getUserById = async function (userId) {

@@ -9,9 +9,8 @@ const multer = require("multer");
 const path = require("path");
 
 // Import models
-const userModel = require("./models/UserModel");
-const productModel = require("./models/ProductModel");
-const cartModel = require("./models/CartModel");
+const User = require("./models/UserModel");
+const Product = require("./models/ProductModel");
 
 // Connect to express app
 const app = express();
@@ -21,7 +20,7 @@ app.use(cors());
 
 // Connect to MongoDB and Express
 mongoose
-  .connect("mongodb+srv://aup-oss:aup123@aup-oss.o7zk4nq.mongodb.net/aup-oss", {
+  .connect("mongodb+srv://aup-oss:aup123@aup-oss.o7zk4nq.mongodb.net/aup-oos", {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
@@ -34,13 +33,35 @@ mongoose
     console.log("Unable to connect to server/MongoDB", err);
   });
 
+// Middleware
+const verifyToken = (req, res, next) => {
+  const token = req.header("Authorization").replace("Bearer ", "");
+
+  if (!token) {
+    return res.status(401).json({ error: "Unauthorized: No token provided" });
+  }
+
+  jwt.verify(token, "secretkey", (err, decoded) => {
+    if (err) {
+      console.log(err);
+      return res.status(403).json({ error: "Unauthorized: Invalid token" });
+    }
+
+    req.user = decoded;
+    next();
+  });
+};
+
+app.use("/add-to-cart", verifyToken);
+app.use("/view-cart", verifyToken);
+
 // Routes
 // User Login
 app.post("/login", async (req, res) => {
   try {
     const { idNum, pwd } = req.body;
 
-    const user = await userModel.findOne({ idNum: idNum });
+    const user = await User.findOne({ idNum: idNum });
     if (!user) {
       return res.status(400).json({ error: "No record found" });
     }
@@ -49,10 +70,16 @@ app.post("/login", async (req, res) => {
       return res.status(400).json({ error: "The password is incorrect" });
     }
     const token = jwt.sign(
-      { _id: user._id, idNum: user.idNum, email: user.email },
+      {
+        _id: user._id,
+        idNum: user.idNum,
+        email: user.email,
+        role: user.role,
+        cart: user.cart,
+      },
       "secretkey",
       {
-        expiresIn: "1h",
+        expiresIn: "1d",
       }
     );
     res
@@ -67,10 +94,11 @@ app.get("/user", async (req, res) => {
   try {
     const token = req.header("Authorization").replace("Bearer ", "");
     const decoded = jwt.verify(token, "secretkey");
-    const user = await userModel.findById(decoded._id);
+    const user = await User.findById(decoded._id);
     res.status(200).json(user);
   } catch (error) {
     res.status(401).json({ error: "Unauthorized" });
+    console.log(error);
   }
 });
 // User Register
@@ -78,7 +106,7 @@ app.post("/register", async (req, res) => {
   try {
     const { firstName, lastName, idNum, email, pwd } = req.body;
     const hashedPwd = await bcrypt.hash(pwd, 10);
-    const newUser = new userModel({
+    const newUser = new User({
       firstName,
       lastName,
       idNum,
@@ -96,7 +124,7 @@ app.post("/register", async (req, res) => {
 
 app.get("/register", async (req, res) => {
   try {
-    const user = await userModel.find();
+    const user = await User.find();
     res.status(201).json(user);
   } catch (error) {
     res.status(500).json({ error: "Unable to get users" });
@@ -106,7 +134,7 @@ app.get("/register", async (req, res) => {
 app.delete("/delete-user/:id", async (req, res) => {
   try {
     const userId = req.params.id;
-    await userModel.findByIdAndDelete(userId);
+    await User.findByIdAndDelete(userId);
     res.status(200).json({ message: "User deleted successfully" });
   } catch (error) {
     res.status(500).json({ error: "Failed to delete user\n" + error });
@@ -144,7 +172,7 @@ app.post("/add-products", upload.single("image"), async (req, res) => {
   const photo = req.file.filename;
 
   try {
-    const newProduct = new productModel({
+    const newProduct = new Product({
       photo: photo,
       label,
       price,
@@ -165,7 +193,7 @@ app.post("/add-products", upload.single("image"), async (req, res) => {
 // View Product
 app.get("/get-products", async (req, res) => {
   try {
-    const products = await productModel.find({});
+    const products = await Product.find({});
     res.status(200).json({ message: "success", products });
   } catch (error) {
     console.log(error);
@@ -178,35 +206,58 @@ app.get("/get-products", async (req, res) => {
 // Delete Product
 
 // Cart Page
+// Cart Page
 // Add to Cart
-app.post("/cart", async (req, res) => {
-  const { orderId, productId, quantity } = req.body;
+app.post("/add-to-cart", async (req, res) => {
   try {
-    const newCart = new cartModel({
-      orderId,
-      products: [
-        {
-          productID: productId,
-          quantity: quantity,
-        },
-      ],
-    });
-    await newCart.save();
-    res.status(201).json({ newCart, message: "Cart created successfully" });
+    const { productId, quantity } = req.body;
+    const decoded = jwt.verify(
+      req.header("Authorization").replace("Bearer ", ""),
+      "secretkey"
+    );
+
+    const user = await User.findById(decoded._id);
+
+    // Check if product exists and has enough quantity
+    const product = await Product.findById(productId);
+    if (!product || product.totalQuantity < quantity) {
+      return res
+        .status(404)
+        .json({ message: "Product not found or insufficient quantity" });
+    }
+
+    user.cart = user.cart || [];
+    // Add product to user's cart
+    const existingCartItem = user.cart.find(
+      (item) => String(item.product) === productId
+    );
+    if (existingCartItem) {
+      existingCartItem.quantity += quantity;
+    } else {
+      user.cart.push({ product: productId, quantity });
+    }
+    const cart = user.cart;
+    await user.save();
+
+    res
+      .status(200)
+      .json({ message: "Product added to cart successfully", cart });
+    console.log(cart);
   } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
     console.log(error);
-    res.status(500).json({ error: "Failed to create cart\n" + error });
   }
 });
 
 // View Cart
-app.get("/cart", async (req, res) => {
+app.get("/view-cart", async (req, res) => {
   try {
-    const cart = await cartModel.find({});
-    res.status(200).json({ message: "success", cart });
+    const user = req.user; // Access user details from the middleware
+    await user.populate("cart.product").execPopulate();
+    res.status(200).json(user.cart, { message: "Cart viewed successfully" });
   } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
     console.log(error);
-    res.status(500).json({ error: "Failed to get cart\n" + error });
   }
 });
 
