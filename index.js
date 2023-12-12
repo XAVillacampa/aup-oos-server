@@ -201,11 +201,70 @@ app.get("/get-products", async (req, res) => {
   }
 });
 
+// app.get("/get-products/:productId", async (req, res) => {
+//   try {
+//     const productId = req.params.productId;
+//     const product = await Product.findById(productId);
+
+//     if (!product) {
+//       return res.status(404).json({ error: "Product not found" });
+//     }
+
+//     res.status(200).json({ message: "Success", product });
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).json({ error: "Failed to get product" });
+//   }
+// });
+
 // Update Product
+app.put("/update-product/:id", upload.single("image"), async (req, res) => {
+  const productId = req.params.id;
+  const { label, price, totalQuantity, category } = req.body;
+  const photo = req.file ? req.file.filename : undefined;
+
+  try {
+    const updatedFields = {
+      label,
+      price,
+      totalQuantity,
+      category,
+    };
+
+    if (photo) {
+      updatedFields.photo = photo;
+    }
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      productId,
+      updatedFields,
+      { new: true } // To get the updated product after the update operation
+    );
+
+    res
+      .status(200)
+      .json({ message: "Product updated successfully", updatedProduct });
+  } catch (error) {
+    console.error("Error updating product:", error);
+    res.status(500).json({ error: "Failed to update product" });
+  }
+});
 
 // Delete Product
+app.delete("/delete-products", async (req, res) => {
+  try {
+    const { productIds } = req.body; // Get the product IDs from the request body
 
-// Cart Page
+    // Delete multiple products based on the received IDs
+    await Product.deleteMany({ _id: { $in: productIds } });
+
+    res.status(200).json({ message: "Products deleted successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Failed to delete products\n" + error });
+  }
+});
+
 // Cart Page
 // Add to Cart
 app.post("/add-to-cart", async (req, res) => {
