@@ -30,7 +30,7 @@ mongoose
     });
   })
   .catch((err) => {
-    console.log("Unable to connect to server/MongoDB", err);
+    console.log("Unable to connect to server/MongoDB\n", err);
   });
 
 // Middleware
@@ -150,9 +150,13 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
+    const originalName = file.originalname;
     const timestamp = Date.now();
     const extension = path.extname(file.originalname);
-    const filename = `${file.fieldname}_${timestamp}${extension}`;
+    const filename = `${path.basename(
+      originalName,
+      extension
+    )}_${timestamp}${extension}`;
     cb(null, filename);
   },
 });
