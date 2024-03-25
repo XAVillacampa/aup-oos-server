@@ -20,7 +20,7 @@ app.use(cors());
 
 // Connect to MongoDB and Express
 mongoose
-  .connect("mongodb+srv://aup-oss:aup123@aup-oss.o7zk4nq.mongodb.net/aup-oos", {
+  .connect("mongodb+srv://aup-oss:aup123@aup-oss.o7zk4nq.mongodb.net/", {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
