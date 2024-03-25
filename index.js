@@ -89,7 +89,7 @@ app.post("/login", async (req, res) => {
     res.status(500).json({ error: "Failed to login user\n" + error });
   }
 });
-
+ 
 app.get("/user", async (req, res) => {
   try {
     const token = req.header("Authorization").replace("Bearer ", "");
