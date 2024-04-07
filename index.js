@@ -20,10 +20,9 @@ app.use(cors());
 
 // Connect to MongoDB and Express
 mongoose
-  .connect("mongodb+srv://aup-oss:aup123@aup-oss.o7zk4nq.mongodb.net/", {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(
+    "mongodb+srv://aup-oss:aup123@aup-oss.o7zk4nq.mongodb.net/?retryWrites=true&w=majority&appName=aup-oss"
+  )
   .then(() => {
     app.listen(3000, () => {
       console.log("Server is running with MongoDB");
@@ -35,21 +34,20 @@ mongoose
 
 // Middleware
 const verifyToken = (req, res, next) => {
-  const token = req.header("Authorization").replace("Bearer ", "");
+  const token = req.header("Authorization");
 
   if (!token) {
     return res.status(401).json({ error: "Unauthorized: No token provided" });
   }
 
-  jwt.verify(token, "secretkey", (err, decoded) => {
-    if (err) {
-      console.log(err);
-      return res.status(403).json({ error: "Unauthorized: Invalid token" });
-    }
-
+  try {
+    const decoded = jwt.verify(token.replace("Bearer ", ""), "secretkey");
     req.user = decoded;
     next();
-  });
+  } catch (error) {
+    console.log(error);
+    return res.status(403).json({ error: "Unauthorized: Invalid token" });
+  }
 };
 
 app.use("/add-to-cart", verifyToken);
@@ -74,13 +72,9 @@ app.post("/login", async (req, res) => {
         _id: user._id,
         idNum: user.idNum,
         email: user.email,
-        role: user.role,
         cart: user.cart,
       },
-      "secretkey",
-      {
-        expiresIn: "1d",
-      }
+      "secretkey"
     );
     res
       .status(201)
@@ -89,7 +83,7 @@ app.post("/login", async (req, res) => {
     res.status(500).json({ error: "Failed to login user\n" + error });
   }
 });
- 
+
 app.get("/user", async (req, res) => {
   try {
     const token = req.header("Authorization").replace("Bearer ", "");
@@ -104,13 +98,14 @@ app.get("/user", async (req, res) => {
 // User Register
 app.post("/register", async (req, res) => {
   try {
-    const { firstName, lastName, idNum, email, pwd } = req.body;
+    const { firstName, lastName, idNum, email, phoneNumber, pwd } = req.body;
     const hashedPwd = await bcrypt.hash(pwd, 10);
     const newUser = new User({
       firstName,
       lastName,
       idNum,
       email,
+      phoneNumber,
       pwd: hashedPwd,
     });
     await newUser.save();
@@ -121,7 +116,6 @@ app.post("/register", async (req, res) => {
 });
 
 //GET REGISTERED USERS
-
 app.get("/register", async (req, res) => {
   try {
     const user = await User.find();
@@ -142,7 +136,6 @@ app.delete("/delete-user/:id", async (req, res) => {
 });
 
 // Product Page
-
 // Configure Multer for file upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
