@@ -128,7 +128,7 @@ app.get("/register", async (req, res) => {
 //Update User data
 app.put("/update-user/:id", async (req, res) => {
   const userId = req.params.id;
-  const updatedUserData = req.body; // Assuming updated user data is sent in the request body
+  const updatedUserData = req.body;
 
   try {
     const user = await User.findById(userId);
@@ -142,6 +142,9 @@ app.put("/update-user/:id", async (req, res) => {
     user.lastName = updatedUserData.lastName || user.lastName;
     user.email = updatedUserData.email || user.email;
     user.phoneNumber = updatedUserData.phoneNumber || user.phoneNumber;
+    user.pwd = updatedUserData.pwd
+      ? await bcrypt.hash(updatedUserData.pwd, 10)
+      : user.pwd;
 
     // Save the updated user data
     await user.save();
