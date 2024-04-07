@@ -73,6 +73,7 @@ app.post("/login", async (req, res) => {
         idNum: user.idNum,
         email: user.email,
         cart: user.cart,
+        role: user.role,
       },
       "secretkey"
     );
