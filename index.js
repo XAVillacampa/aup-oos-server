@@ -125,6 +125,33 @@ app.get("/register", async (req, res) => {
   }
 });
 
+//Update User data
+app.put("/update-user/:id", async (req, res) => {
+  const userId = req.params.id;
+  const updatedUserData = req.body; // Assuming updated user data is sent in the request body
+
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Update user properties with the new data
+    user.firstName = updatedUserData.firstName || user.firstName;
+    user.lastName = updatedUserData.lastName || user.lastName;
+    user.email = updatedUserData.email || user.email;
+    user.phoneNumber = updatedUserData.phoneNumber || user.phoneNumber;
+
+    // Save the updated user data
+    await user.save();
+
+    res.status(200).json({ message: "User updated successfully", user });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update user" });
+  }
+});
+
 app.delete("/delete-user/:id", async (req, res) => {
   try {
     const userId = req.params.id;
