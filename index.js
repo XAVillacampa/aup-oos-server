@@ -335,12 +335,18 @@ app.post("/add-to-cart", async (req, res) => {
 // View Cart
 app.get("/view-cart", async (req, res) => {
   try {
-    const user = req.user; // Access user details from the middleware
-    await user.populate("cart.product").execPopulate();
-    res.status(200).json(user.cart, { message: "Cart viewed successfully" });
+    // Ensure req.user contains the correct user data with cart field
+    const user = await User.findById(req.user._id).populate("cart.product");
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res
+      .status(200)
+      .json({ cart: user.cart, message: "Cart viewed successfully" });
+    console.log(user.cart);
   } catch (error) {
-    res.status(500).json({ message: "Internal server error" });
-    console.log(error);
+    console.error("Error fetching user cart:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
