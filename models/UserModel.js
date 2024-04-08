@@ -28,6 +28,7 @@ const userSchema = new mongoose.Schema({
         return "student"; // Default role if idNum is neither 7 nor 8
       }
     },
+    enum: ["student", "staff", "employee", "admin"], // Adding additional roles without condition
   },
 });
 

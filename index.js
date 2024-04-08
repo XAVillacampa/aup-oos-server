@@ -143,6 +143,7 @@ app.put("/update-user/:id", async (req, res) => {
     user.lastName = updatedUserData.lastName || user.lastName;
     user.email = updatedUserData.email || user.email;
     user.phoneNumber = updatedUserData.phoneNumber || user.phoneNumber;
+    user.role = updatedUserData.role || user.role;
     user.pwd = updatedUserData.pwd
       ? await bcrypt.hash(updatedUserData.pwd, 10)
       : user.pwd;
