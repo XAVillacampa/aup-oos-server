@@ -347,7 +347,7 @@ app.get("/view-cart", async (req, res) => {
     res
       .status(200)
       .json({ cart: user.cart, message: "Cart viewed successfully" });
-    console.log(user.cart);
+    // console.log(user.cart);
   } catch (error) {
     console.error("Error fetching user cart:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -357,6 +357,26 @@ app.get("/view-cart", async (req, res) => {
 // Update Cart
 
 // Delete Cart
+app.delete("/view-cart/:orderId", async (req, res) => {
+  try {
+    const orderId = req.params.orderId;
+    const decoded = jwt.verify(
+      req.header("Authorization").replace("Bearer ", ""),
+      "secretkey"
+    );
+
+    const user = await User.findById(decoded._id);
+
+    // Remove the item from the user's cart
+    user.cart = user.cart.filter((item) => String(item._id) !== orderId);
+    await user.save();
+
+    res.status(200).json({ message: "Item deleted from cart successfully" });
+  } catch (error) {
+    console.error("Error deleting item from cart:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 // Payment Page
 // View Payment
