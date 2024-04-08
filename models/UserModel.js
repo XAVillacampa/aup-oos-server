@@ -21,11 +21,11 @@ const userSchema = new mongoose.Schema({
     default: function () {
       // Set default role based on idNum
       if (this.idNum.toString().length === 7) {
-        return "user";
+        return "student";
       } else if (this.idNum.toString().length === 8) {
         return "staff";
       } else {
-        return "user"; // Default role if idNum is neither 7 nor 8
+        return "student"; // Default role if idNum is neither 7 nor 8
       }
     },
   },
