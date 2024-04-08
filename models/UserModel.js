@@ -16,7 +16,19 @@ const userSchema = new mongoose.Schema({
       quantity: Number,
     },
   ],
-  role: { type: String, default: "user" },
+  role: {
+    type: String,
+    default: function () {
+      // Set default role based on idNum
+      if (this.idNum.toString().length === 7) {
+        return "user";
+      } else if (this.idNum.toString().length === 8) {
+        return "staff";
+      } else {
+        return "user"; // Default role if idNum is neither 7 nor 8
+      }
+    },
+  },
 });
 
 userSchema.statics.getUserById = async function (userId) {
