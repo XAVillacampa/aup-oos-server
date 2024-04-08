@@ -295,6 +295,38 @@ app.delete("/delete-products", async (req, res) => {
 });
 
 // Cart Page
+app.put("/update-cart-item/:orderId", async (req, res) => {
+  try {
+    const orderId = req.params.orderId;
+    const { quantity } = req.body;
+    const decoded = jwt.verify(
+      req.header("Authorization").replace("Bearer ", ""),
+      "secretkey"
+    );
+
+    const user = await User.findById(decoded._id);
+
+    // Find the item in the user's cart
+    const cartItem = user.cart.find((item) => String(item._id) === orderId);
+    if (!cartItem) {
+      return res.status(404).json({ error: "Item not found in cart" });
+    }
+
+    // Update the quantity of the item
+    cartItem.quantity = quantity;
+    await user.save();
+
+    res
+      .status(200)
+      .json({
+        message: "Cart item quantity updated successfully",
+        cart: user.cart,
+      });
+  } catch (error) {
+    console.error("Error updating cart item quantity:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 // Add to Cart
 app.post("/add-to-cart", async (req, res) => {
   try {
