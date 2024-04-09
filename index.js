@@ -316,12 +316,10 @@ app.put("/update-cart-item/:orderId", async (req, res) => {
     cartItem.quantity = quantity;
     await user.save();
 
-    res
-      .status(200)
-      .json({
-        message: "Cart item quantity updated successfully",
-        cart: user.cart,
-      });
+    res.status(200).json({
+      message: "Cart item quantity updated successfully",
+      cart: user.cart,
+    });
   } catch (error) {
     console.error("Error updating cart item quantity:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -408,6 +406,25 @@ app.delete("/view-cart/:orderId", async (req, res) => {
   } catch (error) {
     console.error("Error deleting item from cart:", error);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+//Checkout Button update tempPrice
+app.put("/update-temp-price", async (req, res) => {
+  try {
+    const { tempPrice } = req.body;
+    const token = req.headers.authorization.split(" ")[1];
+    const decoded = jwt.verify(token, "secretkey");
+    const user = await User.findById(decoded._id); // Use _id instead of userId
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    user.tempPrice = tempPrice;
+    await user.save();
+    res.status(200).json({ message: "Temp price updated successfully" });
+  } catch (error) {
+    console.error("Error updating tempPrice:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
