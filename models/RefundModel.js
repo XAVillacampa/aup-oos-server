@@ -18,6 +18,7 @@ const refundSchema = new Schema({
   },
   approval: {
     type: String,
+    enum: ["pending", "approved", "declined"],
     default: "pending",
   },
   reason: {
