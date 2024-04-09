@@ -11,6 +11,8 @@ const path = require("path");
 // Import models
 const User = require("./models/UserModel");
 const Product = require("./models/ProductModel");
+const Refund = require("./models/RefundModel");
+const History = require("./models/HistoryModel");
 
 // Connect to express app
 const app = express();
@@ -433,3 +435,22 @@ app.put("/update-temp-price", async (req, res) => {
 
 // History Page
 // View History
+
+// Refund Page
+// Add Refund
+app.post("/refund", async (req, res) => {
+  try {
+    const { transactionNumber, dateCancelled, reason, idNum } = req.body;
+    // Save refund data to the database
+    const refund = await Refund.create({
+      transactionNumber,
+      dateCancelled,
+      reason,
+      idNum,
+    });
+    res.status(201).json({ message: "Refund request submitted", refund });
+  } catch (error) {
+    console.error("Failed to submit refund:", error);
+    res.status(500).json({ error: "Failed to submit refund" });
+  }
+});
