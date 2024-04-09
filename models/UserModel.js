@@ -30,6 +30,7 @@ const userSchema = new mongoose.Schema({
     },
     enum: ["student", "staff", "employee", "admin"], // Adding additional roles without condition
   },
+  tempPrice: { type: Number, default: 0 },
 });
 
 userSchema.statics.getUserById = async function (userId) {
