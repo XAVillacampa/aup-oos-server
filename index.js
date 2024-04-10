@@ -481,7 +481,9 @@ app.get("/order-history/:userId", verifyToken, async (req, res) => {
     if (!req.user._id.equals(userId)) {
       return res.status(403).json({ message: "Unauthorized" });
     }
-    const orders = await Order.find({ userId: userId });
+    const orders = await Order.find({ userId: userId }).populate(
+      "itemsPurchased.product"
+    );
     res.status(200).json(orders);
   } catch (error) {
     console.error("Failed to fetch order history:", error);

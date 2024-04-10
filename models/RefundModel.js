@@ -15,6 +15,7 @@ const refundSchema = new Schema({
   transactionNumber: {
     type: String,
     required: true,
+    unique: true,
   },
   approval: {
     type: String,

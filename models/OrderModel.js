@@ -9,6 +9,7 @@ const orderSchema = new mongoose.Schema({
   transactionNumber: {
     type: String,
     required: true,
+    unique: true,
   },
   datePurchased: {
     type: Date,
@@ -35,7 +36,7 @@ const orderSchema = new mongoose.Schema({
     default: "Paid",
     required: true,
   },
-  cart: [
+  itemsPurchased: [
     {
       product: {
         type: mongoose.Schema.Types.ObjectId,
