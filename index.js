@@ -456,3 +456,37 @@ app.post("/refund", async (req, res) => {
 });
 
 //FOR ORDER HISTORY
+app.get("/order-history/:userId", verifyToken, async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    if (req.user._id !== userId) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+    const orders = await Order.find({ userId: userId }).populate({
+      path: "itemsPurchased.product",
+      model: "ProductModel", // Use the correct model name
+    });
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error("Failed to fetch order history:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.post("/save-order-history", verifyToken, async (req, res) => {
+  try {
+    const newOrder = new Order(req.body);
+    await newOrder.save();
+    res.status(201).json({ message: "Order history saved successfully" });
+  } catch (error) {
+    console.error("Error saving order history:", error);
+    if (error.name === "ValidationError") {
+      console.error("Validation errors:", error.errors); // Log the validation errors
+      res
+        .status(400)
+        .json({ message: "Validation error", errors: error.errors });
+    } else {
+      res.status(500).json({ message: "Failed to save order history" });
+    }
+  }
+});
