@@ -32,7 +32,7 @@ const orderSchema = new mongoose.Schema({
       "Pending User Confirmation",
       "Cancelled",
     ],
-    default: "Pending User Confirmation",
+    default: "Paid",
     required: true,
   },
   cart: [
