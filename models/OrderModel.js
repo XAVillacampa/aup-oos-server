@@ -35,6 +35,15 @@ const orderSchema = new mongoose.Schema({
     default: "Pending User Confirmation",
     required: true,
   },
+  cart: [
+    {
+      product: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+      },
+      quantity: Number,
+    },
+  ],
 });
 
 const Order = mongoose.model("Order", orderSchema);

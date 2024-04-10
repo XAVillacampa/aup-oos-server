@@ -25,6 +25,17 @@ const refundSchema = new Schema({
     type: String,
     required: true,
   },
+  itemsPurchased: [
+    {
+      product: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+      },
+      quantity: {
+        type: Number,
+      },
+    },
+  ],
 });
 
 // Create and export the model

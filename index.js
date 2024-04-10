@@ -433,29 +433,7 @@ app.put("/update-temp-price", async (req, res) => {
 // View Payment
 
 // History Page
-// View History
-
-// Refund Page
-// Add Refund
-app.post("/refund", async (req, res) => {
-  try {
-    const { transactionNumber, dateCancelled, reason, idNum } = req.body;
-    // Save refund data to the database
-    const refund = await Refund.create({
-      transactionNumber,
-      dateCancelled,
-      reason,
-      idNum,
-    });
-    res.status(201).json({ message: "Refund request submitted", refund });
-  } catch (error) {
-    console.error("Failed to submit refund:", error);
-    res.status(500).json({ error: "Failed to submit refund" });
-  }
-});
-
 //FOR ORDER HISTORY
-
 app.post("/save-order-history", verifyToken, async (req, res) => {
   try {
     const newOrder = new Order(req.body);
@@ -487,5 +465,76 @@ app.get("/order-history/:userId", verifyToken, async (req, res) => {
     res
       .status(500)
       .json({ message: "Internal server error", error: error.message });
+  }
+});
+
+// Refund Page
+// Add Refund
+app.post("/refund", async (req, res) => {
+  try {
+    const { transactionNumber, dateCancelled, reason, idNum } = req.body;
+    // Save refund data to the database
+    const refund = await Refund.create({
+      transactionNumber,
+      dateCancelled,
+      reason,
+      idNum,
+    });
+    res.status(201).json({ message: "Refund request submitted", refund });
+  } catch (error) {
+    console.error("Failed to submit refund:", error);
+    res.status(500).json({ error: "Failed to submit refund" });
+  }
+});
+
+// View Refund
+app.get("/refund", async (req, res) => {
+  try {
+    // Fetch all refund documents from the database
+    const refunds = await Refund.find({});
+    res
+      .status(200)
+      .json({ message: "Refund data retrieved successfully", refunds });
+  } catch (error) {
+    console.error("Error fetching refund data:", error);
+    res.status(500).json({ error: "Failed to fetch refund data" });
+  }
+});
+
+// Approve Refund
+app.put("/approve-refund/:id", async (req, res) => {
+  try {
+    const refundId = req.params.id;
+
+    // Update refund request status to "approved"
+    const updatedRefund = await Refund.findByIdAndUpdate(
+      refundId,
+      { approval: "approved" },
+      { new: true } // To get the updated refund request after the update operation
+    );
+
+    res.status(200).json({ message: "Refund request approved", updatedRefund });
+  } catch (error) {
+    console.error("Error approving refund:", error);
+    res.status(500).json({ error: "Failed to approve refund" });
+  }
+});
+
+// Decline Refund
+app.put("/decline-refund/:id", async (req, res) => {
+  try {
+    const refundId = req.params.id;
+
+    // Update refund request status to "declined"
+    const updatedRefund = await Refund.findByIdAndUpdate(
+      refundId,
+      { approval: "declined" },
+      { new: true } // To get the updated refund request after the update operation
+    );
+
+    res.status(200).json({ message: "Refund request declined", updatedRefund });
+  } catch (error) {
+    console.error("Error declining refund:", error);
+    res.status(500).json({ error: "Failed to decline refund" });
   }
 });
