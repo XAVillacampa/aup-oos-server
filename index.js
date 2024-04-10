@@ -35,16 +35,15 @@ mongoose
   });
 
 // Middleware
-const verifyToken = (req, res, next) => {
-  const token = req.header("Authorization");
-
-  if (!token) {
-    return res.status(401).json({ error: "Unauthorized: No token provided" });
-  }
-
+const verifyToken = async (req, res, next) => {
+  const token = req.header("Authorization").split(" ")[1];
   try {
-    const decoded = jwt.verify(token.replace("Bearer ", ""), "secretkey");
-    req.user = decoded;
+    const decoded = jwt.verify(token, "secretkey");
+    const user = await User.findById(decoded._id);
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized: No user found" });
+    }
+    req.user = user;
     next();
   } catch (error) {
     console.log(error);
@@ -456,22 +455,6 @@ app.post("/refund", async (req, res) => {
 });
 
 //FOR ORDER HISTORY
-app.get("/order-history/:userId", verifyToken, async (req, res) => {
-  try {
-    const userId = req.params.userId;
-    if (req.user._id !== userId) {
-      return res.status(403).json({ message: "Unauthorized" });
-    }
-    const orders = await Order.find({ userId: userId }).populate({
-      path: "itemsPurchased.product",
-      model: "ProductModel", // Use the correct model name
-    });
-    res.status(200).json(orders);
-  } catch (error) {
-    console.error("Failed to fetch order history:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
 
 app.post("/save-order-history", verifyToken, async (req, res) => {
   try {
@@ -488,5 +471,21 @@ app.post("/save-order-history", verifyToken, async (req, res) => {
     } else {
       res.status(500).json({ message: "Failed to save order history" });
     }
+  }
+});
+
+app.get("/order-history/:userId", verifyToken, async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    if (!req.user._id.equals(userId)) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+    const orders = await Order.find({ userId: userId });
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error("Failed to fetch order history:", error);
+    res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
   }
 });
