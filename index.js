@@ -474,6 +474,7 @@ app.post("/save-order-history", verifyToken, async (req, res) => {
   }
 });
 
+// View Order History
 app.get("/order-history/:userId", verifyToken, async (req, res) => {
   try {
     const userId = req.params.userId;
