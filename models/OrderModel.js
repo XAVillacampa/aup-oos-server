@@ -1,13 +1,13 @@
 const mongoose = require("mongoose");
 
-const orderHistorySchema = new mongoose.Schema({
-  transactionNumber: {
-    type: String,
-    required: true,
-  },
+const orderSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
+    required: true,
+  },
+  transactionNumber: {
+    type: String,
     required: true,
   },
   datePurchased: {
@@ -15,11 +15,11 @@ const orderHistorySchema = new mongoose.Schema({
     default: Date.now,
     required: true,
   },
-  amountSpent: {
+  totalPrice: {
     type: Number,
     required: true,
   },
-  methodOfPayment: {
+  paymentMethod: {
     type: String,
     required: true,
   },
@@ -32,22 +32,10 @@ const orderHistorySchema = new mongoose.Schema({
       "Pending User Confirmation",
       "Cancelled",
     ],
+    default: "Pending User Confirmation",
     required: true,
   },
-  itemsPurchased: [
-    {
-      product: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Product",
-        required: true,
-      },
-      quantity: {
-        type: Number,
-        required: true,
-      },
-    },
-  ],
 });
 
-const OrderHistory = mongoose.model("OrderHistory", orderHistorySchema);
-module.exports = OrderHistory;
+const Order = mongoose.model("Order", orderSchema);
+module.exports = Order;
