@@ -514,20 +514,11 @@ app.get("/order-history/:userId", verifyToken, async (req, res) => {
 // Update Order
 app.put("/update-order/:orderId", verifyToken, async (req, res) => {
   try {
-    // Extract all potential update fields from the request body
+    const { orderId } = req.params;
     const { itemsPurchased, status } = req.body;
-
-    const orderUpdates = {};
-    if (itemsPurchased) {
-      orderUpdates.itemsPurchased = itemsPurchased;
-    }
-    if (status) {
-      orderUpdates.status = status;
-    }
-
     const updatedOrder = await Order.findByIdAndUpdate(
-      req.params.orderId,
-      orderUpdates,
+      orderId,
+      { itemsPurchased, status },
       { new: true }
     ).populate("itemsPurchased.product");
 
