@@ -437,7 +437,9 @@ app.get("/order-history", verifyToken, async (req, res) => {
     if (!["admin", "employee"].includes(req.user.role)) {
       return res.status(403).json({ message: "Unauthorized" });
     }
-    const orders = await Order.find().populate("userId");
+    const orders = await Order.find()
+      .populate("userId")
+      .populate("itemsPurchased.product");
     res.status(200).json(orders);
   } catch (error) {
     console.error("Failed to fetch order history:", error);
@@ -506,6 +508,35 @@ app.get("/order-history/:userId", verifyToken, async (req, res) => {
     res
       .status(500)
       .json({ message: "Internal server error", error: error.message });
+  }
+});
+
+// Update Order
+app.put("/update-order/:orderId", verifyToken, async (req, res) => {
+  try {
+    // Extract all potential update fields from the request body
+    const { itemsPurchased, status } = req.body;
+
+    const orderUpdates = {};
+    if (itemsPurchased) {
+      orderUpdates.itemsPurchased = itemsPurchased;
+    }
+    if (status) {
+      orderUpdates.status = status;
+    }
+
+    const updatedOrder = await Order.findByIdAndUpdate(
+      req.params.orderId,
+      orderUpdates,
+      { new: true }
+    ).populate("itemsPurchased.product");
+
+    res
+      .status(200)
+      .json({ message: "Order updated successfully", updatedOrder });
+  } catch (error) {
+    console.error("Error updating order:", error);
+    res.status(500).json({ error: "Failed to update order" });
   }
 });
 
