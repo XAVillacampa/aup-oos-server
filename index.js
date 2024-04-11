@@ -469,6 +469,86 @@ app.put("/reset-cart/:userId", verifyToken, async (req, res) => {
   }
 });
 
+//GET WEEKLY SALES
+
+app.get("/weekly-sales", async (req, res) => {
+  try {
+    let currentDate = new Date();
+    let startDate = new Date(currentDate);
+    let endDate = new Date(currentDate);
+    const currentDay = currentDate.getDay(); // Sunday - Saturday : 0 - 6
+
+    // Adjust startDate to the previous Monday
+    const diffToMonday = currentDay === 0 ? 6 : currentDay - 1; // If current day is Sunday, set diff to 6, otherwise currentDay - 1
+    startDate.setDate(startDate.getDate() - diffToMonday);
+    startDate.setHours(0, 0, 0, 0); // Set start of the day for startDate
+
+    // Adjust endDate to the next Sunday
+    const diffToSunday = currentDay === 0 ? 0 : 7 - currentDay; // If current day is Sunday, no adjustment needed
+    endDate.setDate(endDate.getDate() + diffToSunday);
+    endDate.setHours(23, 59, 59, 999); // Set end of the day for endDate
+
+    const sales = await Order.aggregate([
+      {
+        $match: {
+          status: "Complete",
+          datePurchased: { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalSales: { $sum: "$totalPrice" },
+        },
+      },
+    ]);
+    console.log("Start Date:", startDate);
+    console.log("End Date:", endDate);
+
+    const totalSales = sales.length > 0 ? sales[0].totalSales : 0;
+    console.log("Total Sales:", totalSales);
+
+    res.status(200).json({ totalSales });
+  } catch (error) {
+    console.error("Error fetching weekly sales:", error);
+    res.status(500).json({ error: "Failed to fetch weekly sales" });
+  }
+});
+
+//Weekly Orders
+
+app.get("/weekly-orders", async (req, res) => {
+  try {
+    let currentDate = new Date();
+    let startDate = new Date(currentDate);
+    let endDate = new Date(currentDate);
+    const currentDay = currentDate.getDay(); // Sunday - Saturday : 0 - 6
+
+    // Adjust startDate to the previous Monday
+    const diffToMonday = currentDay === 0 ? 6 : currentDay - 1; // If current day is Sunday, set diff to 6, otherwise currentDay - 1
+    startDate.setDate(startDate.getDate() - diffToMonday);
+    startDate.setHours(0, 0, 0, 0); // Set start of the day for startDate
+
+    // Adjust endDate to the next Sunday
+    const diffToSunday = currentDay === 0 ? 0 : 7 - currentDay; // If current day is Sunday, no adjustment needed
+    endDate.setDate(endDate.getDate() + diffToSunday);
+    endDate.setHours(23, 59, 59, 999); // Set end of the day for endDate
+
+    const orders = await Order.find({
+      status: "Complete",
+      datePurchased: { $gte: startDate, $lte: endDate },
+    });
+
+    const weeklyOrderCount = orders.length;
+    console.log("Weekly Order Count:", weeklyOrderCount);
+
+    res.status(200).json({ weeklyOrderCount });
+  } catch (error) {
+    console.error("Error fetching weekly orders:", error);
+    res.status(500).json({ error: "Failed to fetch weekly orders" });
+  }
+});
+
 // Payment Page
 // View Payment
 
