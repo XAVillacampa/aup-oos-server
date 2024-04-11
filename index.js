@@ -36,7 +36,13 @@ mongoose
 
 // Middleware
 const verifyToken = async (req, res, next) => {
-  const token = req.header("Authorization").split(" ")[1];
+  const authHeader = req.header("Authorization");
+  if (!authHeader) {
+    return res.status(401).json({ error: "Unauthorized: No token provided" });
+  }
+
+  const token = authHeader.split(" ")[1];
+  // console.log("Extracted Token:", token, "\n");
   try {
     const decoded = jwt.verify(token, "secretkey");
     const user = await User.findById(decoded._id);
@@ -44,6 +50,7 @@ const verifyToken = async (req, res, next) => {
       return res.status(401).json({ error: "Unauthorized: No user found" });
     }
     req.user = user;
+    // console.log("User Role: ", req.user.role);
     next();
   } catch (error) {
     console.log(error);
@@ -531,6 +538,25 @@ app.put("/update-order/:orderId", verifyToken, async (req, res) => {
   }
 });
 
+// View Order History by Transaction Number
+app.get("/order-history-trn/:transactionNumber", verifyToken, async (req, res) => {
+  try {
+    const { transactionNumber } = req.params;
+    const order = await Order.findOne({ transactionNumber }).populate(
+      "itemsPurchased.product"
+    );
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    res.status(200).json(order);
+  } catch (error) {
+    console.error("Failed to fetch order:", error);
+    res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
+  }
+});
+
 // Refund Page
 // Add Refund
 app.post("/refund", async (req, res) => {
@@ -554,7 +580,16 @@ app.post("/refund", async (req, res) => {
 app.get("/refund", async (req, res) => {
   try {
     // Fetch all refund documents from the database
-    const refunds = await Refund.find({});
+    const refunds = await Refund.find({}).lean();
+    for (let refund of refunds) {
+      const order = await Order.findOne({
+        transactionNumber: refund.transactionNumber,
+      }).populate("itemsPurchased.product");
+      if (order) {
+        refund.itemsPurchased = order.itemsPurchased;
+        refund.paymentMethod = order.paymentMethod;
+      }
+    }
     res
       .status(200)
       .json({ message: "Refund data retrieved successfully", refunds });
