@@ -438,6 +438,34 @@ app.put("/update-temp-price", async (req, res) => {
 
 //JUDE SPACE
 
+// Update Product Quantities after Purchase
+app.post("/decrement-product-quantities", async (req, res) => {
+  try {
+    const updates = req.body.itemsPurchased; // Expecting {productId, quantity} pairs
+
+    await Promise.all(
+      updates.map(async (update) => {
+        const product = await Product.findById(update.product);
+        if (!product) {
+          throw new Error("Product not found");
+        }
+        product.totalQuantity -= update.quantity;
+        if (product.totalQuantity < 0) {
+          throw new Error("Insufficient stock");
+        }
+        await product.save();
+      })
+    );
+
+    res
+      .status(200)
+      .json({ message: "Product quantities updated successfully" });
+  } catch (error) {
+    console.error("Error updating product quantities:", error);
+    res.status(500).json({ error: "Failed to update product quantities" });
+  }
+});
+
 app.get("/order-history", verifyToken, async (req, res) => {
   try {
     // Check if the logged-in user has the role to view all orders (e.g., admin or employee)
@@ -619,23 +647,27 @@ app.put("/update-order/:orderId", verifyToken, async (req, res) => {
 });
 
 // View Order History by Transaction Number
-app.get("/order-history-trn/:transactionNumber", verifyToken, async (req, res) => {
-  try {
-    const { transactionNumber } = req.params;
-    const order = await Order.findOne({ transactionNumber }).populate(
-      "itemsPurchased.product"
-    );
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+app.get(
+  "/order-history-trn/:transactionNumber",
+  verifyToken,
+  async (req, res) => {
+    try {
+      const { transactionNumber } = req.params;
+      const order = await Order.findOne({ transactionNumber }).populate(
+        "itemsPurchased.product"
+      );
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      res.status(200).json(order);
+    } catch (error) {
+      console.error("Failed to fetch order:", error);
+      res
+        .status(500)
+        .json({ message: "Internal server error", error: error.message });
     }
-    res.status(200).json(order);
-  } catch (error) {
-    console.error("Failed to fetch order:", error);
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
   }
-});
+);
 
 // Refund Page
 // Add Refund
