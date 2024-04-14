@@ -368,7 +368,7 @@ app.post("/add-to-cart", async (req, res) => {
     res
       .status(200)
       .json({ message: "Product added to cart successfully", cart });
-    console.log(cart);
+    // console.log(cart);
   } catch (error) {
     res.status(500).json({ message: "Internal server error" });
     console.log(error);
@@ -437,56 +437,56 @@ app.put("/update-temp-price", async (req, res) => {
 });
 
 //JUDE SPACE
+//
+// app.put("/approve-refund/:id", async (req, res) => {
+//   try {
+//     const refundId = req.params.id;
 
-app.put("/approve-refund/:id", async (req, res) => {
-  try {
-    const refundId = req.params.id;
+//     const refund = await Refund.findById(refundId);
+//     if (!refund) {
+//       return res.status(404).json({ message: "Refund not found" });
+//     }
 
-    const refund = await Refund.findById(refundId);
-    if (!refund) {
-      return res.status(404).json({ message: "Refund not found" });
-    }
+//     const order = await Order.findOne({
+//       transactionNumber: refund.transactionNumber,
+//     }).populate("itemsPurchased.product");
+//     if (!order) {
+//       return res.status(404).json({ message: "Order not found" });
+//     }
 
-    const order = await Order.findOne({
-      transactionNumber: refund.transactionNumber,
-    }).populate("itemsPurchased.product");
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
+//     if (!order.itemsPurchased || order.itemsPurchased.length === 0) {
+//       throw new Error("No items found in the order to restore quantities");
+//     }
 
-    if (!order.itemsPurchased || order.itemsPurchased.length === 0) {
-      throw new Error("No items found in the order to restore quantities");
-    }
+//     await Promise.all(
+//       order.itemsPurchased.map(async (item) => {
+//         if (!item.product) {
+//           throw new Error(`Product ID ${item.product._id} not found in order`);
+//         }
+//         const product = await Product.findById(item.product._id);
+//         if (!product) {
+//           throw new Error(`Product not found with ID ${item.product._id}`);
+//         }
+//         product.totalQuantity += item.quantity;
+//         await product.save();
+//       })
+//     );
 
-    await Promise.all(
-      order.itemsPurchased.map(async (item) => {
-        if (!item.product) {
-          throw new Error(`Product ID ${item.product._id} not found in order`);
-        }
-        const product = await Product.findById(item.product._id);
-        if (!product) {
-          throw new Error(`Product not found with ID ${item.product._id}`);
-        }
-        product.totalQuantity += item.quantity;
-        await product.save();
-      })
-    );
+//     refund.approval = "approved";
+//     await refund.save();
 
-    refund.approval = "approved";
-    await refund.save();
-
-    res.status(200).json({
-      message: "Refund request approved and product quantities updated",
-      refund,
-    });
-  } catch (error) {
-    console.error("Error approving refund and updating quantities:", error);
-    res.status(500).json({
-      error: "Failed to approve refund and update quantities",
-      details: error.message,
-    });
-  }
-});
+//     res.status(200).json({
+//       message: "Refund request approved and product quantities updated",
+//       refund,
+//     });
+//   } catch (error) {
+//     console.error("Error approving refund and updating quantities:", error);
+//     res.status(500).json({
+//       error: "Failed to approve refund and update quantities",
+//       details: error.message,
+//     });
+//   }
+// });
 
 // Update Product Quantities after Purchase
 app.post("/decrement-product-quantities", async (req, res) => {
@@ -587,11 +587,11 @@ app.get("/weekly-sales", async (req, res) => {
         },
       },
     ]);
-    console.log("Start Date:", startDate);
-    console.log("End Date:", endDate);
+    // console.log("Start Date:", startDate);
+    // console.log("End Date:", endDate);
 
     const totalSales = sales.length > 0 ? sales[0].totalSales : 0;
-    console.log("Total Sales:", totalSales);
+    // console.log("Total Sales:", totalSales);
 
     res.status(200).json({ totalSales });
   } catch (error) {
@@ -625,7 +625,7 @@ app.get("/weekly-orders", async (req, res) => {
     });
 
     const weeklyOrderCount = orders.length;
-    console.log("Weekly Order Count:", weeklyOrderCount);
+    // console.log("Weekly Order Count:", weeklyOrderCount);
 
     res.status(200).json({ weeklyOrderCount });
   } catch (error) {
@@ -766,14 +766,53 @@ app.put("/approve-refund/:id", async (req, res) => {
   try {
     const refundId = req.params.id;
 
-    // Update refund request status to "approved"
+    // Find the refund document
+    const refund = await Refund.findById(refundId);
+    if (!refund) {
+      return res.status(404).json({ message: "Refund not found" });
+    }
+
+    // Find the associated order using the transaction number from the refund
+    const order = await Order.findOne({
+      transactionNumber: refund.transactionNumber,
+    }).populate("itemsPurchased.product");
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // If order is found, update its status to 'Cancelled'
+    const updatedOrder = await Order.findByIdAndUpdate(
+      order._id,
+      { status: "Cancelled" },
+      { new: true }
+    );
+
+    // Update the refund status to 'approved'
     const updatedRefund = await Refund.findByIdAndUpdate(
       refundId,
       { approval: "approved" },
-      { new: true } // To get the updated refund request after the update operation
+      { new: true }
     );
 
-    res.status(200).json({ message: "Refund request approved", updatedRefund });
+    // Update product quantities if the refund is approved
+    if (updatedOrder && updatedRefund.approval === "approved") {
+      await Promise.all(
+        order.itemsPurchased.map(async (item) => {
+          const product = await Product.findById(item.product._id);
+          if (product) {
+            product.totalQuantity += item.quantity;
+            await product.save();
+          }
+        })
+      );
+    }
+
+    res.status(200).json({
+      message:
+        "Refund approved, order cancelled, and product quantities updated",
+      order: updatedOrder,
+      refund: updatedRefund,
+    });
   } catch (error) {
     console.error("Error approving refund:", error);
     res.status(500).json({ error: "Failed to approve refund" });
