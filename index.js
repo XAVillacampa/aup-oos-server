@@ -438,6 +438,56 @@ app.put("/update-temp-price", async (req, res) => {
 
 //JUDE SPACE
 
+app.put("/approve-refund/:id", async (req, res) => {
+  try {
+    const refundId = req.params.id;
+
+    const refund = await Refund.findById(refundId);
+    if (!refund) {
+      return res.status(404).json({ message: "Refund not found" });
+    }
+
+    const order = await Order.findOne({
+      transactionNumber: refund.transactionNumber,
+    }).populate("itemsPurchased.product");
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    if (!order.itemsPurchased || order.itemsPurchased.length === 0) {
+      throw new Error("No items found in the order to restore quantities");
+    }
+
+    await Promise.all(
+      order.itemsPurchased.map(async (item) => {
+        if (!item.product) {
+          throw new Error(`Product ID ${item.product._id} not found in order`);
+        }
+        const product = await Product.findById(item.product._id);
+        if (!product) {
+          throw new Error(`Product not found with ID ${item.product._id}`);
+        }
+        product.totalQuantity += item.quantity;
+        await product.save();
+      })
+    );
+
+    refund.approval = "approved";
+    await refund.save();
+
+    res.status(200).json({
+      message: "Refund request approved and product quantities updated",
+      refund,
+    });
+  } catch (error) {
+    console.error("Error approving refund and updating quantities:", error);
+    res.status(500).json({
+      error: "Failed to approve refund and update quantities",
+      details: error.message,
+    });
+  }
+});
+
 // Update Product Quantities after Purchase
 app.post("/decrement-product-quantities", async (req, res) => {
   try {
