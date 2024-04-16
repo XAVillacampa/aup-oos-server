@@ -855,7 +855,7 @@ app.put("/decline-refund/:id", async (req, res) => {
   }
 });
 
-// For analytics
+// For admin dashboard top products
 app.get("/top-products", async (req, res) => {
   try {
     // Adjust the start and end dates to fit the current week
@@ -906,6 +906,69 @@ app.get("/top-products", async (req, res) => {
     ]);
 
     res.status(200).json(topProducts);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// User-specific weekly top products
+app.get("/user-top-products/:userId", verifyToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Adjust the start and end dates to fit the current week
+    const currentDate = new Date();
+    const firstDayOfWeek =
+      currentDate.getDate() -
+      currentDate.getDay() +
+      (currentDate.getDay() === 0 ? -6 : 1); // Adjust to start the week on Monday
+    const startDate = new Date(currentDate.setDate(firstDayOfWeek));
+    startDate.setHours(0, 0, 0, 0); // Start of the first day of the week
+
+    const endDate = new Date(); // Today's date
+    endDate.setHours(23, 59, 59, 999); // End of the current day
+
+    // Aggregate products and sum their quantities
+    const userTopProducts = await Order.aggregate([
+      {
+        $match: {
+          userId: user._id, // match by user ID
+          datePurchased: { $gte: startDate, $lte: endDate },
+          status: "Complete",
+        },
+      },
+      { $unwind: "$itemsPurchased" },
+      {
+        $group: {
+          _id: "$itemsPurchased.product",
+          totalBought: { $sum: "$itemsPurchased.quantity" },
+        },
+      },
+      { $sort: { totalBought: -1 } },
+      { $limit: 5 }, // Limit to top 5 products for the user
+      {
+        $lookup: {
+          from: "products",
+          localField: "_id",
+          foreignField: "_id",
+          as: "productDetails",
+        },
+      },
+      { $unwind: "$productDetails" },
+      {
+        $project: {
+          _id: 0,
+          productLabel: "$productDetails.label",
+          totalBought: 1,
+        },
+      },
+    ]);
+
+    res.status(200).json(userTopProducts);
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });
   }
