@@ -837,3 +837,59 @@ app.put("/decline-refund/:id", async (req, res) => {
     res.status(500).json({ error: "Failed to decline refund" });
   }
 });
+
+// For analytics
+app.get("/top-products", async (req, res) => {
+  try {
+    // Adjust the start and end dates to fit the current week
+    const currentDate = new Date();
+    const firstDayOfWeek =
+      currentDate.getDate() -
+      currentDate.getDay() +
+      (currentDate.getDay() === 0 ? -6 : 1); // Adjust to start the week on Monday
+    const startDate = new Date(currentDate.setDate(firstDayOfWeek));
+    startDate.setHours(0, 0, 0, 0); // Start of the first day of the week
+
+    const endDate = new Date(); // Today's date
+    endDate.setHours(23, 59, 59, 999); // End of the current day
+
+    // Aggregate products and sum their quantities
+    const topProducts = await Order.aggregate([
+      {
+        $match: {
+          datePurchased: { $gte: startDate, $lte: endDate },
+          status: "Complete",
+        },
+      },
+      { $unwind: "$itemsPurchased" },
+      {
+        $group: {
+          _id: "$itemsPurchased.product",
+          totalSold: { $sum: "$itemsPurchased.quantity" },
+        },
+      },
+      { $sort: { totalSold: -1 } },
+      { $limit: 5 }, // Limit to top 5 products
+      {
+        $lookup: {
+          from: "products",
+          localField: "_id",
+          foreignField: "_id",
+          as: "productDetails",
+        },
+      },
+      { $unwind: "$productDetails" },
+      {
+        $project: {
+          _id: 0,
+          productLabel: "$productDetails.label",
+          totalSold: 1,
+        },
+      },
+    ]);
+
+    res.status(200).json(topProducts);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
