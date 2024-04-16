@@ -487,6 +487,23 @@ app.put("/update-temp-price", async (req, res) => {
 //     });
 //   }
 // });
+// Cart Count Endpoint
+// Cart Count Endpoint - Count distinct products
+app.get("/cart-count", verifyToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).populate("cart.product");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Count distinct products in the cart
+    const distinctProductCount = user.cart.length;
+    res.status(200).json({ count: distinctProductCount });
+  } catch (error) {
+    console.error("Error fetching cart count:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 // Update Product Quantities after Purchase
 app.post("/decrement-product-quantities", async (req, res) => {
