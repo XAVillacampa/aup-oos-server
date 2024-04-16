@@ -106,8 +106,21 @@ app.get("/user", async (req, res) => {
 });
 // User Register
 app.post("/register", async (req, res) => {
+  const { firstName, lastName, idNum, email, phoneNumber, pwd } = req.body;
+
   try {
-    const { firstName, lastName, idNum, email, phoneNumber, pwd } = req.body;
+    // Check if the ID number is already in use
+    const existingUser = await User.findOne({ idNum });
+    if (existingUser) {
+      return res
+        .status(409)
+        .json({
+          error:
+            "The ID number is already registered. Please use a different ID number.",
+        });
+    }
+
+    // Proceed with the user creation if no duplication
     const hashedPwd = await bcrypt.hash(pwd, 10);
     const newUser = new User({
       firstName,
@@ -117,10 +130,11 @@ app.post("/register", async (req, res) => {
       phoneNumber,
       pwd: hashedPwd,
     });
+
     await newUser.save();
-    res.status(201).json({ newUser, message: "User created successfully" });
+    res.status(201).json({ message: "User created successfully", newUser });
   } catch (error) {
-    res.status(500).json({ error: "Failed to create user\n" + error });
+    res.status(500).json({ error: "Failed to create user: " + error.message });
   }
 });
 
