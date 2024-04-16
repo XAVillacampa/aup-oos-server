@@ -112,12 +112,10 @@ app.post("/register", async (req, res) => {
     // Check if the ID number is already in use
     const existingUser = await User.findOne({ idNum });
     if (existingUser) {
-      return res
-        .status(409)
-        .json({
-          error:
-            "The ID number is already registered. Please use a different ID number.",
-        });
+      return res.status(409).json({
+        error:
+          "The ID number is already registered. Please use a different ID number.",
+      });
     }
 
     // Proceed with the user creation if no duplication
@@ -714,6 +712,7 @@ app.get("/refund", async (req, res) => {
       if (order) {
         refund.itemsPurchased = order.itemsPurchased;
         refund.paymentMethod = order.paymentMethod;
+        refund.status = order.status;
       }
     }
     res
