@@ -433,6 +433,46 @@ app.put("/update-temp-price", async (req, res) => {
 });
 
 //JUDE SPACE
+
+app.delete("/delete-order-items/:orderId", verifyToken, async (req, res) => {
+  const { orderId } = req.params;
+  const { productIds } = req.body;
+
+  try {
+    const order = await Order.findById(orderId).populate(
+      "itemsPurchased.product"
+    );
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Filter and update items
+    const remainingItems = order.itemsPurchased.filter(
+      (item) => !productIds.includes(item.product._id.toString())
+    );
+    order.itemsPurchased = remainingItems;
+
+    // Recalculate total price
+    const newTotalPrice = remainingItems.reduce(
+      (acc, item) => acc + item.product.price * item.quantity,
+      0
+    );
+    order.totalPrice = newTotalPrice;
+
+    await order.save();
+
+    res.status(200).json({
+      message: "Items deleted and order updated successfully",
+      order: order,
+    });
+  } catch (error) {
+    console.error("Error updating order after deleting items:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to update order", error: error.message });
+  }
+});
+
 // Cart Count Endpoint - Count distinct products
 app.get("/cart-count", verifyToken, async (req, res) => {
   try {
