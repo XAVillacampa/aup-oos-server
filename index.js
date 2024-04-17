@@ -804,17 +804,27 @@ app.put("/decline-refund/:id", async (req, res) => {
 // For admin dashboard top products
 app.get("/top-products", async (req, res) => {
   try {
-    // Adjust the start and end dates to fit the current week
-    const currentDate = new Date();
-    const firstDayOfWeek =
-      currentDate.getDate() -
-      currentDate.getDay() +
-      (currentDate.getDay() === 0 ? -6 : 1); // Adjust to start the week on Monday
-    const startDate = new Date(currentDate.setDate(firstDayOfWeek));
-    startDate.setHours(0, 0, 0, 0); // Start of the first day of the week
+    const range = req.query.range || "weekly";
+    let startDate = new Date();
+    let endDate = new Date();
 
-    const endDate = new Date(); // Today's date
-    endDate.setHours(23, 59, 59, 999); // End of the current day
+    if (range === "weekly") {
+      // Start from the previous Sunday and end on the next Saturday
+      let dayOfWeek = startDate.getDay(); // Get current day of week, Sunday - 0, Monday - 1, ..., Saturday - 6
+      startDate.setDate(startDate.getDate() - dayOfWeek); // Set to previous Sunday
+      startDate.setHours(0, 0, 0, 0); // Start of the day
+      endDate.setDate(endDate.getDate() + (6 - dayOfWeek)); // Set to next Saturday
+      endDate.setHours(23, 59, 59, 999); // End of the day
+    } else if (range === "monthly") {
+      // Start from the first day of the current month
+      startDate.setDate(1); // First day of this month
+      startDate.setHours(0, 0, 0, 0); // Start of the day
+      endDate.setHours(23, 59, 59, 999); // End of the current day
+    } else if (range === "all") {
+      // Collecting all completed orders
+      startDate = new Date(0); // Very early date to include all records
+      endDate = new Date(); // Up until now
+    }
 
     // Aggregate products and sum their quantities
     const topProducts = await Order.aggregate([
@@ -866,25 +876,35 @@ app.get("/user-top-products/:userId", verifyToken, async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Adjust the start and end dates to fit the current week
-    const currentDate = new Date();
-    const firstDayOfWeek =
-      currentDate.getDate() -
-      currentDate.getDay() +
-      (currentDate.getDay() === 0 ? -6 : 1); // Adjust to start the week on Monday
-    const startDate = new Date(currentDate.setDate(firstDayOfWeek));
-    startDate.setHours(0, 0, 0, 0); // Start of the first day of the week
+    const range = req.query.range || "weekly";
+    let startDate = new Date();
+    let endDate = new Date();
 
-    const endDate = new Date(); // Today's date
-    endDate.setHours(23, 59, 59, 999); // End of the current day
+    if (range === "weekly") {
+      // Adjust to the beginning and end of the current week
+      let currentDay = startDate.getDay();
+      let diffToSunday = currentDay === 0 ? 0 : 7 - currentDay;
+      startDate.setDate(startDate.getDate() - currentDay);
+      endDate.setDate(endDate.getDate() + diffToSunday);
+    } else if (range === "monthly") {
+      // Adjust to the beginning of the current month and the current date
+      startDate.setDate(1);
+    } else if (range === "all") {
+      // Set startDate far back enough to include all orders
+      startDate = new Date(0); // Very early date to include all records
+    }
+
+    // Set times to encompass the whole day
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
 
     // Aggregate products and sum their quantities
-    const userTopProducts = await Order.aggregate([
+    const topProducts = await Order.aggregate([
       {
         $match: {
-          userId: user._id, // match by user ID
-          datePurchased: { $gte: startDate, $lte: endDate },
+          userId: mongoose.Types.ObjectId(userId),
           status: "Complete",
+          datePurchased: { $gte: startDate, $lte: endDate },
         },
       },
       { $unwind: "$itemsPurchased" },
@@ -895,7 +915,7 @@ app.get("/user-top-products/:userId", verifyToken, async (req, res) => {
         },
       },
       { $sort: { totalBought: -1 } },
-      { $limit: 5 }, // Limit to top 5 products for the user
+      { $limit: 5 }, // Limit to top 5 products
       {
         $lookup: {
           from: "products",
@@ -916,6 +936,9 @@ app.get("/user-top-products/:userId", verifyToken, async (req, res) => {
 
     res.status(200).json(userTopProducts);
   } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
+    console.error("Error fetching user top products:", error);
+    res
+      .status(500)
+      .json({ error: "Internal server error", error: error.message });
   }
 });
