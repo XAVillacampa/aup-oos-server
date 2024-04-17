@@ -871,10 +871,12 @@ app.get("/top-products", async (req, res) => {
 app.get("/user-top-products/:userId", verifyToken, async (req, res) => {
   try {
     const { userId } = req.params;
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+
+    // Ensure the user ID is a valid string and convert it
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid user ID" });
     }
+    const validUserId = new mongoose.Types.ObjectId(userId);
 
     const range = req.query.range || "weekly";
     let startDate = new Date();
@@ -902,7 +904,7 @@ app.get("/user-top-products/:userId", verifyToken, async (req, res) => {
     const topProducts = await Order.aggregate([
       {
         $match: {
-          userId: mongoose.Types.ObjectId(userId),
+          userId: validUserId,
           status: "Complete",
           datePurchased: { $gte: startDate, $lte: endDate },
         },
@@ -934,7 +936,7 @@ app.get("/user-top-products/:userId", verifyToken, async (req, res) => {
       },
     ]);
 
-    res.status(200).json(userTopProducts);
+    res.status(200).json(topProducts);
   } catch (error) {
     console.error("Error fetching user top products:", error);
     res
