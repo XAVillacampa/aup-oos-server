@@ -457,7 +457,9 @@ app.delete("/delete-order-items/:orderId", verifyToken, async (req, res) => {
       (acc, item) => acc + item.product.price * item.quantity,
       0
     );
-    order.totalPrice = newTotalPrice;
+
+    const repackingFee = newTotalPrice * 0.05;
+    order.totalPrice = newTotalPrice + repackingFee;
 
     await order.save();
 
