@@ -13,6 +13,8 @@ const User = require("./models/UserModel");
 const Product = require("./models/ProductModel");
 const Refund = require("./models/RefundModel");
 const Order = require("./models/OrderModel");
+const DeletedProduct = require("./models/DeletedProductModel");
+const Settings = require("./models/SettingsModel");
 
 // Connect to express app
 const app = express();
@@ -284,19 +286,19 @@ app.put("/update-product/:id", upload.single("image"), async (req, res) => {
 });
 
 // Delete Product
-app.delete("/delete-products", async (req, res) => {
-  try {
-    const { productIds } = req.body; // Get the product IDs from the request body
+// app.delete("/delete-products", async (req, res) => {
+//   try {
+//     const { productIds } = req.body; // Get the product IDs from the request body
 
-    // Delete multiple products based on the received IDs
-    await Product.deleteMany({ _id: { $in: productIds } });
+//     // Delete multiple products based on the received IDs
+//     await Product.deleteMany({ _id: { $in: productIds } });
 
-    res.status(200).json({ message: "Products deleted successfully" });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: "Failed to delete products\n" + error });
-  }
-});
+//     res.status(200).json({ message: "Products deleted successfully" });
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).json({ error: "Failed to delete products\n" + error });
+//   }
+// });
 
 // Cart Page
 app.put("/update-cart-item/:orderId", async (req, res) => {
@@ -332,7 +334,7 @@ app.put("/update-cart-item/:orderId", async (req, res) => {
 // Add to Cart
 app.post("/add-to-cart", async (req, res) => {
   try {
-    const { productId, quantity } = req.body;
+    const { productId, quantity, price } = req.body;
     const decoded = jwt.verify(
       req.header("Authorization").replace("Bearer ", ""),
       "secretkey"
@@ -356,7 +358,7 @@ app.post("/add-to-cart", async (req, res) => {
     if (existingCartItem) {
       existingCartItem.quantity += quantity;
     } else {
-      user.cart.push({ product: productId, quantity });
+      user.cart.push({ product: productId, quantity, price: price });
     }
     const cart = user.cart;
     await user.save();
@@ -433,6 +435,44 @@ app.put("/update-temp-price", async (req, res) => {
 });
 
 //JUDE SPACE
+
+app.delete("/delete-products", async (req, res) => {
+  try {
+    const { productIds, reason } = req.body; // Assuming you pass the reason in the request body
+
+    // Find the products to get their names before deletion
+    const products = await Product.find({ _id: { $in: productIds } });
+
+    // Delete the products
+    await Product.deleteMany({ _id: { $in: productIds } });
+
+    // Save each deletion detail
+    await Promise.all(
+      products.map((product) => {
+        const deletionDetail = new DeletedProduct({
+          productName: product.label,
+          reason,
+        });
+        return deletionDetail.save();
+      })
+    );
+
+    res.status(200).json({ message: "Products deleted successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Failed to delete products\n" + error });
+  }
+});
+
+app.get("/deleted-products", async (req, res) => {
+  try {
+    const deletedProducts = await DeletedProduct.find({});
+    res.status(200).json(deletedProducts);
+  } catch (error) {
+    console.error("Failed to fetch deleted products:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 app.delete("/delete-order-items/:orderId", verifyToken, async (req, res) => {
   const { orderId } = req.params;
@@ -645,9 +685,24 @@ app.get("/weekly-orders", async (req, res) => {
 //FOR ORDER HISTORY
 app.post("/save-order-history", verifyToken, async (req, res) => {
   try {
-    const newOrder = new Order(req.body);
+    // Atomically increment and fetch the last transaction number
+    const settings = await Settings.findOneAndUpdate(
+      {},
+      { $inc: { lastTransactionNumber: 1 } },
+      { new: true, upsert: true }
+    );
+
+    // Format the transaction number as a 10-digit string
+    const transactionNumber = settings.lastTransactionNumber
+      .toString()
+      .padStart(10, "0");
+
+    const newOrderData = { ...req.body, transactionNumber: transactionNumber };
+    const newOrder = new Order(newOrderData);
     await newOrder.save();
-    res.status(201).json({ message: "Order history saved successfully" });
+    res
+      .status(201)
+      .json({ message: "Order history saved successfully", order: newOrder });
   } catch (error) {
     console.error("Error saving order history:", error);
     if (error.name === "ValidationError") {
@@ -690,6 +745,17 @@ app.put("/update-order/:orderId", verifyToken, async (req, res) => {
       { itemsPurchased, status },
       { new: true }
     ).populate("itemsPurchased.product");
+
+    if (status === "Cancelled") {
+      // Loop through each purchased item and update the inventory
+      await Promise.all(
+        updatedOrder.itemsPurchased.map(async (item) => {
+          const product = await Product.findById(item.product._id);
+          product.totalQuantity += item.quantity;
+          await product.save();
+        })
+      );
+    }
 
     res
       .status(200)
